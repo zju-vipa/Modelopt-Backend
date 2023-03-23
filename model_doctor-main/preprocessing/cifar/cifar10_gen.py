@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 import pickle
 import os
-from configs import config
+# from configs import config
 
 
 def unpickle(paths, types):
@@ -22,7 +22,7 @@ def unpickle(paths, types):
     check_path(classification, types)
 
     for path in paths:
-        path = '{}/{}'.format(config.datasets_CIFAR_10, path)
+        path = '{}/{}'.format(datasets_CIFAR_10_dir, path)
         with open(path, mode='rb') as file:
             # 数据集在当脚本前文件夹下
             data_dict = pickle.load(file, encoding='bytes')
@@ -42,13 +42,13 @@ def unpickle(paths, types):
         ib = Image.fromarray(b)
         rgb = Image.merge("RGB", (ir, ig, ib))
 
-        filename = '{}/{}/{}/{}.png'.format(config.data_cifar10, types, classification[labels[i]], i)
+        filename = '{}/{}/{}/{}.png'.format(data_dir, types, classification[labels[i]], i)
         rgb.save(filename, "PNG")
 
 
 def check_path(classification, types):
     for cls in classification:
-        data_path = '{}/{}/{}'.format(config.data_cifar10, types, cls)
+        data_path = '{}/{}/{}'.format(data_dir, types, cls)
         if not os.path.exists(data_path):
             os.makedirs(data_path)
 
@@ -62,11 +62,13 @@ def main():
 
 def _test():
     import pickle
-    with open("{}/data_batch_1".format(config.datasets_CIFAR_10), 'rb') as fo:
+    with open("{}/data_batch_1".format(datasets_CIFAR_10_dir), 'rb') as fo:
         dict = pickle.load(fo, encoding='bytes')
     print(dict)
 
 
 if __name__ == '__main__':
+    data_dir = "../../datasets/cifar-10-python"
+    datasets_CIFAR_10_dir = "../../datasets/cifar-10-python/cifar-10-batches-py"
     main()
     # _test()

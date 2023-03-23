@@ -20,8 +20,8 @@ from common.new_alchemy_encoder import new_alchemy_encoder
 ####
 
 app = Flask(__name__,
-            template_folder="../frontend/dist/",
-            static_folder="../frontend/dist/static/")
+            template_folder="../modelopt-frontend/dist/",
+            static_folder="../modelopt-frontend/dist/static/")
 
 # 获取mysql配置信息
 HOSTNAME = getConfig("config", 'mysql', 'host')  # def getConfig(filename, section, option):
@@ -133,16 +133,17 @@ def add_data():
     file = request.files['file']
     print("0")
     print(request.files['file'])
+    print(file.filename)
     file.save('{}{}'.format(DATA_URL, file.filename))
-    print("0")
+    print("1")
     #zip_file = zipfile.ZipFile(file)
     # 解压
    # file2 = zip_file.extractall(DATA_URL)
     # file2.close()
 
-    date = Data(time=datetime.now(), data_name=file.filename.split(".")[0], data_url='{}{}'.format(DATA_URL, file.filename))
+    data = Data(time=datetime.now(), data_name=file.filename.split(".")[0], data_url='{}{}'.format(DATA_URL, file.filename))
     print("0")
-    db.session.add(date)
+    db.session.add(data)
     db.session.commit()  # 上传数据集并add到数据表
     return redirect('/')
 
@@ -197,7 +198,7 @@ def first_run():
     focus_on_the_component = request.json.get('focus_on_the_component')
     print("focus_on_the_component:", focus_on_the_component)
     focus_on_the_path1 = request.json.get('focus_on_the_path1')
-    print("focus_on_the_path1:", focus_on_the_path1)    # 缺陷诊断的工具参数
+    print("focus_on_the_path1:",focus_on_the_path1)    # 缺陷诊断的工具参数
     focus_on_the_primitive_character = request.json.get('focus_on_the_primitive_character')
     focus_on_the_path2 = request.json.get('focus_on_the_path2')
     # 错误原因显示参数
@@ -208,43 +209,54 @@ def first_run():
     # 模型和数据
     model_id = request.json.get('model_id')
     data_id = request.json.get('data_id')
-    print("model_id:", model_id)
-    print("data_id:", data_id)
+    print("model_id:",model_id)
+    print("data_id:",data_id)
+    print("model_id:",model_id)
     model = Model.query.filter_by(id=model_id).first().model_url
-    data = Data.query.filter_by(id=data_id).first().data_url  # 模型参数
-    model_name = Model.query.filter_by(id=model_id).first().model_name
+    data = Data.query.filter_by(id=data_id).first().data_url####模型参数
+    model_name=Model.query.filter_by(id=model_id).first().model_name
     data_name = Data.query.filter_by(id=model_id).first().data_name
-    result_path = '../model_doctor-main/output/'
-   # model_name='alexnet'
-   # data_name='cifar10'
-    exp_name = model_name + '_' + data_name + '_22051035'
+    data_name='cifar10'
+    result_path = './model_doctor-main/output/'
+    exp_name =model_name + '_' +data_name
     in_channels = 3
     num_classes = 10
     num_epochs = 10
-    # model_dir =${result_path}${exp_name}'/models'
-    model_dir = os.path.join(result_path, exp_name, 'models')
-    data_dir = os.path.join('../model_doctor-main/datasets', data_name, 'images')
-    log_dir = os.path.join(result_path, 'runs', exp_name)
+    #model_dir =${result_path}${exp_name}'/models'
+    model_dir=os.path.join(result_path,exp_name,'models')
+    data_dir=os.path.join('./model_doctor-main/datasets',data_name)
+    log_dir=os.path.join(result_path,'runs',exp_name)
     device_index = '0'
-    os.system("python ../model_doctor-main/train.py --model_name model_name --data_name data_name --in_channels in_channels --num_classes num_classes --num_epochs num_epochs --model_dir model_dir --data_dir data_dir --log_dir log_dir --device_index device_index")
-    model_path = os.path.join(result_path, exp_name, 'models/model_ori.pth')
-    data_path = os.path.join('../model_doctor-main/datasets', data_name, 'images/train')
-    image_path = os.path.join(result_path, exp_name, 'images_50')
-    num_images = 50
-    os.system("python ../model_doctor-main/core/image_sift.py --model_name model_name --data_name data_name --in_channels in_channels --num_classes num_classes --model_path model_path --data_path data_path --image_path image_path --num_images num_images --device_index device_index")
-    data_path = os.path.join(result_path, exp_name, 'images_50')
-    grad_path = os.path.join(result_path, exp_name, 'grads_50')
+    print("in_channels:",in_channels)
+    print("python ./model_doctor-main/train.py --model_name {model_name} --data_name {data_name} --in_channels 3 --num_classes 10 --num_epochs {num_epochs} --model_dir {model_dir} --data_dir {data_dir} --log_dir {log_dir} --device_index {device_index}".format(model_name=model_name,data_name=data_name,num_epochs=num_epochs,model_dir=model_dir,data_dir=data_dir,log_dir=log_dir,device_index=device_index))
+
+    os.system("python ./model_doctor-main/train.py --model_name {model_name} --data_name {data_name} --in_channels 3 --num_classes 10 --num_epochs {num_epochs} --model_dir {model_dir} --data_dir {data_dir} --log_dir {log_dir} --device_index {device_index}".format(model_name=model_name,data_name=data_name,num_epochs=num_epochs,model_dir=model_dir,data_dir=data_dir,log_dir=log_dir,device_index=device_index))
+
+    model_path=os.path.join(result_path,exp_name,'models/model_ori.pth')
+    data_path=os.path.join('./model_doctor-main/datasets',data_name,'train')
+    image_path=os.path.join(result_path,exp_name,'images_50')
+    num_images=50
+
+    print("python ./model_doctor-main/core/image_sift.py --model_name {model_name} --data_name {data_name} --in_channels {in_channels} --num_classes {num_classes} --model_path {model_path} --data_path {data_path} --image_path {image_path} --num_images {num_images} --device_index {device_index}".format(model_name=model_name,data_name=data_name,in_channels=in_channels,num_classes=num_classes,model_path=model_path,data_path=data_path,image_path=image_path,num_images=num_images,device_index=device_index))
+    os.system("python ./model_doctor-main/core/image_sift.py --model_name {model_name} --data_name {data_name} --in_channels {in_channels} --num_classes {num_classes} --model_path {model_path} --data_path {data_path} --image_path {image_path} --num_images {num_images} --device_index {device_index}".format(model_name=model_name,data_name=data_name,in_channels=in_channels,num_classes=num_classes,model_path=model_path,data_path=data_path,image_path=image_path,num_images=num_images,device_index=device_index))
+
+    data_path=os.path.join(result_path,exp_name,'images_50')
+    grad_path=os.path.join(result_path,exp_name,'grads_50')
     theta = 0.2
-    os.system("python ../model_doctor-main/core/grad_calculate.py --model_name model_name --data_name data_name --in_channels in_channels --num_classes num_classes --model_path model_path --data_path data_path --grad_path grad_path --theta theta --device_index device_index")
+    print("python ./model_doctor-main/core/grad_calculate.py --model_name {model_name} --data_name {data_name} --in_channels {in_channels} --num_classes {num_classes} --model_path {model_path} --data_path {data_path} --grad_path {grad_path} --theta {theta} --device_index {device_index}".format(model_name=model_name,data_name=data_name,in_channels=in_channels,num_classes=num_classes,model_path=model_path,data_path=data_path,grad_path=grad_path,theta=theta,device_index=device_index))
+    os.system("python ./model_doctor-main/core/grad_calculate.py --model_name {model_name} --data_name {data_name} --in_channels {in_channels} --num_classes {num_classes} --model_path {model_path} --data_path {data_path} --grad_path {grad_path} --theta {theta} --device_index {device_index}".format(model_name=model_name,data_name=data_name,in_channels=in_channels,num_classes=num_classes,model_path=model_path,data_path=data_path,grad_path=grad_path,theta=theta,device_index=device_index))
+
+
 
     print("QQQQQQ")
     #result1=os.system("sh ../model_doctor-main/scripts/train.sh "+model_name+" "+data_name)
-    # print("train.sh:",result1)
+    #print("train.sh:",result1)
     #result2 = os.system("sh ../model_doctor-main/scripts/image_sift.sh " + model_name + " " + data_name)
    # print("image_sift.sh:", result2)
     #result3 = os.system("sh ../model_doctor-main/scripts/grad_calculate.sh " + model_name + " " + data_name)
    # print("grad_calculate.sh:", result3)
-    R = os.path.join('../model_doctor-main/output', model_name+"_"+data_name+"_22051035", 'grads_50')
+    R=os.path.join('./model_doctor-main/output',model_name+"_"+data_name,'grads_50')
+
 
     if not os.path.exists(RESULT_URL):
         # 如果目标路径不存在原文件夹的话就创建
@@ -262,6 +274,8 @@ def first_run():
     print('copy dir finished!')
     ####  result4 = os.system("python ../model_doctor-main/preprocessing/labelme_to_mask.py")
     ####  print("labelme_to_mask.py:", result4)
+
+
 
     '''
     此处利用以上参数进行训练，待补充
@@ -392,4 +406,4 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=4444,debug=True)
