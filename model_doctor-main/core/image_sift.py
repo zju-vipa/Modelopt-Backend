@@ -1,7 +1,7 @@
 import sys
 
 sys.path.append('.')
-sys.path.append('/home/lwd/Codes/modelOpt/modelOpt-backend/model_doctor-main/')
+sys.path.append('/home/lwd/Codes/modelOpt/modelopt-backend/model_doctor-main/')
 
 import os
 import torch
@@ -91,7 +91,7 @@ def main():
     # basic configuration
     # ----------------------------------------
     os.environ["CUDA_VISIBLE_DEVICES"] = args.device_index
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
     if not os.path.exists(args.image_path):
         os.makedirs(args.image_path)

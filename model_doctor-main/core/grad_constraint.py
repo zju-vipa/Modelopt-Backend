@@ -8,7 +8,8 @@ class GradConstraint:
 
     def __init__(self, module, grad_path, alpha, beta):
         self.module = HookModule(module)
-        self.channels = torch.from_numpy(np.load(grad_path)).cuda()
+        self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+        self.channels = torch.from_numpy(np.load(grad_path)).to(self.device)
         self.alpha = alpha
         self.beta = beta
 
@@ -23,7 +24,7 @@ class GradConstraint:
                 labels_.append(probs[i][1])  # TP rank2
             else:
                 labels_.append(probs[i][0])  # FP rank1
-        labels_ = torch.tensor(labels_).cuda()
+        labels_ = torch.tensor(labels_).to(self.device)
         nll_loss_ = torch.nn.NLLLoss()(outputs, labels_)
         loss += _loss_channel(channels=self.channels,
                               grads=self.module.grads(outputs=-nll_loss_),

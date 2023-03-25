@@ -8,11 +8,12 @@ import json
 import os
 import zipfile
 from datetime import datetime
+import time
 from pathlib import Path
 import shutil
 import sys
 import numpy as np
-from flask import Flask, render_template, redirect, request, send_from_directory, url_for
+from flask import Flask, render_template, redirect, request, send_from_directory, url_for, jsonify, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from common.getConfig import getConfig
@@ -124,7 +125,11 @@ def add_model():
 @app.route('/modeldoctor/dataset', methods=['get'])
 def get_data_list():
     data = Data.query.all()  # 查询Data表
+    print(111)
+    print(data)
     data = json.dumps(data, cls=new_alchemy_encoder(), check_circular=False)  # 进行json序列化
+    print(data)
+    
     return data  # 返回json数据
 
 
@@ -194,11 +199,11 @@ python ../train.py \
 def first_run():
     # 治疗的工具参数
     focus_on_the_sample = request.json.get('focus_on_the_sample')
-    print("focus_on_the_sample:", focus_on_the_sample)
+    # print("focus_on_the_sample:", focus_on_the_sample)
     focus_on_the_component = request.json.get('focus_on_the_component')
-    print("focus_on_the_component:", focus_on_the_component)
+    # print("focus_on_the_component:", focus_on_the_component)
     focus_on_the_path1 = request.json.get('focus_on_the_path1')
-    print("focus_on_the_path1:",focus_on_the_path1)    # 缺陷诊断的工具参数
+    # print("focus_on_the_path1:",focus_on_the_path1)    # 缺陷诊断的工具参数
     focus_on_the_primitive_character = request.json.get('focus_on_the_primitive_character')
     focus_on_the_path2 = request.json.get('focus_on_the_path2')
     # 错误原因显示参数
@@ -299,29 +304,32 @@ def add_mark():  # 标注上传到MARK URL中（一个文件夹）
     return redirect('/')
 
 
-@app.route('/modeldoctor/task/step2', methods=['put'])
+@app.route('/modeldoctor/task/step2', methods=['post'])
 def second_run():
-    # 治疗的工具参数
-    focus_on_the_sample = request.json.get('focus_on_the_sample')
-    focus_on_the_component = request.json.get('focus_on_the_component')
-    focus_on_the_path1 = request.json.get('focus_on_the_path1')
-    # 缺陷诊断的工具参数
-    focus_on_the_primitive_character = request.json.get('focus_on_the_primitive_character')
-    focus_on_the_path2 = request.json.get('focus_on_the_path2')
-    # 错误原因显示参数
-    cause = request.json.get('cause')
-    # 治疗部位
-    treatment = request.json.get('treatment')
+    # # 治疗的工具参数
+    # focus_on_the_sample = request.json.get('focus_on_the_sample')
+    # focus_on_the_component = request.json.get('focus_on_the_component')
+    # focus_on_the_path1 = request.json.get('focus_on_the_path1')
+    # # 缺陷诊断的工具参数
+    # focus_on_the_primitive_character = request.json.get('focus_on_the_primitive_character')
+    # focus_on_the_path2 = request.json.get('focus_on_the_path2')
+    # # 错误原因显示参数
+    # cause = request.json.get('cause')
+    # # 治疗部位
+    # treatment = request.json.get('treatment')
 
     # 模型和数据
     model_id = request.json.get('model_id')
     data_id = request.json.get('data_id')
-    model = Model.query.filter_by(id=model_id).first().model_url
-    data = Data.query.filter_by(id=data_id).first().data_url
+    # model = Model.query.filter_by(id=model_id).first().model_url
+    # data = Data.query.filter_by(id=data_id).first().data_url
     model_name = Model.query.filter_by(id=model_id).first().model_name
     data_name = Data.query.filter_by(id=model_id).first().data_name
+    data_name='cifar10'
    # 第二次模型训练的预备参数
-    result4 = os.system("sh ../model_doctor-main/scripts/train_model_doctor.sh " + model_name + " " + data_name)
+    print("sh ./model_doctor-main/scripts/train_model_doctor.sh " + model_name + " " + data_name)
+   
+    result4 = os.system("sh ./model_doctor-main/scripts/train_model_doctor.sh " + model_name + " " + data_name)
     print("train_model_doctor.sh:", result4)
 
     '''
@@ -334,7 +342,7 @@ def second_run():
         os.mkdir('{}{}'.format(WEIGHT_URL, now_time_str))  # 如果不存在权重url则构造权重url
     # 将权重文件保存到该文件夹(按时间戳分文件夹保存)
     #weight = np.arange(12)
-    weight = os.path.join("../model_doctor-main/output", model_name + "_" + data_name + "_22051035", "models",
+    weight = os.path.join("./model_doctor-main/output", model_name + "_" + data_name , "models",
                           "model_optim.pth")
     '''
     待补充
@@ -381,21 +389,32 @@ def get_weight():
 def get_history():
     task = Task.query.all()  # 查询Task表
     history = []
+    
     for task_item in task:
         x = {
             "id": task_item.id,
-            "time": task_item.time,
+            "date": str(task_item.time),
             "model": Model.query.filter_by(id=task_item.model_id).first().model_name,
             "data": Data.query.filter_by(id=task_item.data_id).first().data_name
         }
         history.append(x)
-    return history  # get histor task表
+    history = json.dumps(history, cls=new_alchemy_encoder(), check_circular=False)  # 进行json序列化
+    return history  # 返回json数据
 
 
-@app.route('/modeldoctor/history/<hid>', methods=['get'])
-def get_history_weight(hid):
+@app.route('/modeldoctor/history/hid', methods=['get'])
+def get_history_weight():
+    hid = request.args.get('id')
+    print(Task.query.filter_by(id=hid))
     download_url = Task.query.filter_by(id=hid).first().weight_url  # 找到下载所需的url
-    return send_from_directory(download_url, '{}'.format(WEIGHT_NAME), as_attachment=True)
+    
+    try:
+        response = make_response(
+            send_from_directory(download_url, '{}'.format(WEIGHT_NAME), as_attachment=True))
+        return response
+    except Exception as e:
+        return jsonify({"code": "异常", "message": "{}".format(e)})
+    # return send_from_directory(download_url, '{}'.format(WEIGHT_NAME), as_attachment=True)
   # 下载链接生成
 
 
