@@ -1,16 +1,17 @@
 #!/bin/bash
-export result_path='../metr/md/output/'
-export exp_name='vgg16_cifar10_202206072149'
-export model_name='vgg16'
-export data_name='cifar10'
+export cwd_path='model_doctor-main/'
+export result_path=${cwd_path}'output/'
+export model_name=$1
+export data_name=$2
+export exp_name=${1}'_'${2}
 export in_channels=3
 export num_classes=10
 export num_epochs=20
 export model_dir=${result_path}${exp_name}'/models'
-export data_dir='../metr/datasets/cifar10'
+export data_dir=${3}
 export log_dir=${result_path}'/runs/'${exp_name}
 export device_index='1'
-python train.py \
+python ${cwd_path}train.py \
   --model_name ${model_name} \
   --data_name ${data_name} \
   --in_channels ${in_channels} \

@@ -1,8 +1,9 @@
 #!/bin/bash
-export result_path='../metr/md/output/'
-export exp_name='vgg16_cifar10_202206072149'
-export model_name='vgg16'
-export data_name='cifar10'
+export cwd_path='model_doctor-main/'
+export result_path=${cwd_path}'output/'
+export model_name=$1
+export data_name=$2
+export exp_name=${1}'_'${2}
 export in_channels=3
 export num_classes=10
 export model_path=${result_path}${exp_name}'/models/model_ori.pth'
@@ -10,7 +11,7 @@ export data_path=${result_path}${exp_name}'/images_50'
 export grad_path=${result_path}${exp_name}'/grads_50'
 export theta=0.2
 export device_index='2'
-python core/grad_calculate.py \
+python ${cwd_path}core/grad_calculate.py \
   --model_name ${model_name} \
   --data_name ${data_name} \
   --in_channels ${in_channels} \

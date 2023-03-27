@@ -91,7 +91,7 @@ def main():
     # basic configuration
     # ----------------------------------------
     os.environ["CUDA_VISIBLE_DEVICES"] = args.device_index
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     if not os.path.exists(args.image_path):
         os.makedirs(args.image_path)

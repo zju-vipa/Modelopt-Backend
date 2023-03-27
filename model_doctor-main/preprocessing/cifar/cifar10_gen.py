@@ -1,7 +1,6 @@
 import sys
 
-# sys.path.append('/disk1/hjc/classification/')  # 205
-sys.path.append('/workspace/classification/code/')  # zjlab
+sys.path.append('/home/lwd/Codes/modelOpt/modelopt-backend/model_doctor-main/')
 import numpy as np
 from PIL import Image
 import pickle
@@ -68,7 +67,7 @@ def _test():
 
 
 if __name__ == '__main__':
-    data_dir = "../../datasets/cifar-10-python"
-    datasets_CIFAR_10_dir = "../../datasets/cifar-10-python/cifar-10-batches-py"
+    data_dir = "model_doctor-main/datasets/cifar10"
+    datasets_CIFAR_10_dir = "model_doctor-main/datasets/cifar10/cifar-10-batches-py"
     main()
     # _test()

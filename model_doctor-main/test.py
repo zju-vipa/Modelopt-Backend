@@ -27,7 +27,7 @@ def main():
     # basic configuration
     # ----------------------------------------
     os.environ["CUDA_VISIBLE_DEVICES"] = args.device_index
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     print('-' * 50)
     print('TEST ON:', device)

@@ -2,11 +2,12 @@ import sys
 
 sys.path.append('/workspace/classification/code/')  # zjl
 
+sys.path.append('./')
+sys.path.append('/home/lwd/Codes/modelOpt/modelopt-backend/model_doctor-main/')
 import numpy as np
 import cv2
 import os
 
-from configs import config
 from utils import image_util
 
 

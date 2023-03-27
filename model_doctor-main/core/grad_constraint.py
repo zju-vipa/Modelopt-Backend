@@ -8,7 +8,7 @@ class GradConstraint:
 
     def __init__(self, module, grad_path, alpha, beta):
         self.module = HookModule(module)
-        self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.channels = torch.from_numpy(np.load(grad_path)).to(self.device)
         self.alpha = alpha
         self.beta = beta

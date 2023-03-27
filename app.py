@@ -99,6 +99,7 @@ class Task(db.Model):
 
 @app.route('/modeldoctor/model', methods=['get'])
 def get_model_list():
+    print("get_model_list")
     models = Model.query.all()  # 查询数据库所有项
     models = json.dumps(models, cls=new_alchemy_encoder(), check_circular=False)  # 进行json序列化
     return models
@@ -106,10 +107,14 @@ def get_model_list():
 
 @app.route('/modeldoctor/model', methods=['post'])
 def add_model():
-    print(request.files)
+    print("add_model")
     file = request.files['file']
+    model_name = file.filename.split(".")[0]
+    print("model_name: ",model_name)
+    assert model_name in ['simnet', 'alexnet', 'vgg16', 'resnet34', 'resnet50', 'senet34', 'wideresnet28', 'resnext50', 'densenet121', 'simplenetv1', 'efficientnetv2s', 'efficientnetv2l', 'googlenet', 'xception', 'mobilenetv2', 'inceptionv3', 'shufflenetv2', 'squeezenet', 'mnasnet']
+    
     file.save('{}{}'.format(MODEL_URL, file.filename))
-    model = Model(time=datetime.now(), model_name=file.filename.split(".")[0], model_url='{}{}'.format(MODEL_URL, file.filename))
+    model = Model(time=datetime.now(), model_name=model_name, model_url='{}{}'.format(MODEL_URL, file.filename))
     db.session.add(model)
     db.session.commit()  # 上传数据库项
     return redirect('/')  # 重定向
@@ -124,30 +129,39 @@ def add_model():
 
 @app.route('/modeldoctor/dataset', methods=['get'])
 def get_data_list():
+    print("get_data_list")
     data = Data.query.all()  # 查询Data表
-    print(111)
-    print(data)
     data = json.dumps(data, cls=new_alchemy_encoder(), check_circular=False)  # 进行json序列化
-    print(data)
-    
     return data  # 返回json数据
 
 
 @app.route('/modeldoctor/dataset', methods=['post'])
 def add_data():
+    print("add_data")
     file = request.files['file']
-    print("0")
-    print(request.files['file'])
-    print(file.filename)
+    data_name = file.filename.split(".")[0]
+    print("data_name: ",data_name)
+    assert data_name in ['cifar10', 'cifar100', 'mnist', 'fashion_mnist', 'svhn', 'stl10', 'mnin']
+    
     file.save('{}{}'.format(DATA_URL, file.filename))
-    print("1")
-    #zip_file = zipfile.ZipFile(file)
-    # 解压
-   # file2 = zip_file.extractall(DATA_URL)
-    # file2.close()
+    zip_file = zipfile.ZipFile(file)
+    zip_file.extractall(DATA_URL)
+    zip_file.close()
+    
+    if data_name == 'cifar10':
+        print("python ./model_doctor-main/preprocessing/cifar/"+data_name+"_gen.py")
+        os.system("python ./model_doctor-main/preprocessing/cifar/"+data_name+"_gen.py")
+        data_url="./model_doctor-main/datasets/cifar10"
+    elif data_name == 'cifar100':
+        print("python ./model_doctor-main/preprocessing/cifar/"+data_name+"_gen.py")
+        os.system("python ./model_doctor-main/preprocessing/cifar/"+data_name+"_gen.py")
+        data_url="./model_doctor-main/datasets/cifar100/processed"
+    # elif data_name == 'mnist':
+    #     print("python ./model_doctor-main/preprocessing/cifar/"+data_name+"_gen.py")
+    #     os.system("python ./model_doctor-main/preprocessing/cifar/"+data_name+"_gen.py")
+    #     data_url="./model_doctor-main/datasets/cifar100/processed"
 
-    data = Data(time=datetime.now(), data_name=file.filename.split(".")[0], data_url='{}{}'.format(DATA_URL, file.filename))
-    print("0")
+    data = Data(time=datetime.now(), data_name=data_name, data_url=data_url)
     db.session.add(data)
     db.session.commit()  # 上传数据集并add到数据表
     return redirect('/')
@@ -162,12 +176,6 @@ def add_data():
     5.输出诊断结果(返回图片的地址list) GET /modeldoctor/task/result
     6.下载模型优化权重(分文件夹存储) GET /modeldoctor/task/weigtht
 '''
-
-
-@app.route('/word/cloud/generate', methods=['post'])
-def test():
-    print("DDDD")
-    return redirect('/')
 
 
 '''
@@ -197,88 +205,46 @@ python ../train.py \
 
 @app.route('/modeldoctor/task/step1', methods=['post'])
 def first_run():
-    # 治疗的工具参数
-    focus_on_the_sample = request.json.get('focus_on_the_sample')
-    # print("focus_on_the_sample:", focus_on_the_sample)
-    focus_on_the_component = request.json.get('focus_on_the_component')
-    # print("focus_on_the_component:", focus_on_the_component)
-    focus_on_the_path1 = request.json.get('focus_on_the_path1')
-    # print("focus_on_the_path1:",focus_on_the_path1)    # 缺陷诊断的工具参数
-    focus_on_the_primitive_character = request.json.get('focus_on_the_primitive_character')
-    focus_on_the_path2 = request.json.get('focus_on_the_path2')
-    # 错误原因显示参数
-    cause = request.json.get('cause')
-    # 治疗部位
-    treatment = request.json.get('treatment')
-
     # 模型和数据
     model_id = request.json.get('model_id')
     data_id = request.json.get('data_id')
     print("model_id:",model_id)
     print("data_id:",data_id)
-    print("model_id:",model_id)
-    model = Model.query.filter_by(id=model_id).first().model_url
-    data = Data.query.filter_by(id=data_id).first().data_url####模型参数
-    model_name=Model.query.filter_by(id=model_id).first().model_name
-    data_name = Data.query.filter_by(id=model_id).first().data_name
-    data_name='cifar10'
-    result_path = './model_doctor-main/output/'
-    exp_name =model_name + '_' +data_name
-    in_channels = 3
-    num_classes = 10
-    num_epochs = 10
-    #model_dir =${result_path}${exp_name}'/models'
-    model_dir=os.path.join(result_path,exp_name,'models')
-    data_dir=os.path.join('./model_doctor-main/datasets',data_name)
-    log_dir=os.path.join(result_path,'runs',exp_name)
-    device_index = '0'
-    print("in_channels:",in_channels)
-    print("python ./model_doctor-main/train.py --model_name {model_name} --data_name {data_name} --in_channels 3 --num_classes 10 --num_epochs {num_epochs} --model_dir {model_dir} --data_dir {data_dir} --log_dir {log_dir} --device_index {device_index}".format(model_name=model_name,data_name=data_name,num_epochs=num_epochs,model_dir=model_dir,data_dir=data_dir,log_dir=log_dir,device_index=device_index))
+    data_url = Data.query.filter_by(id=data_id).first().data_url####模型参数
+    
+    model_name = Model.query.filter_by(id=model_id).first().model_name
+    data_name = Data.query.filter_by(id=data_id).first().data_name
+    
+    print("sh ./model_doctor-main/scripts/train.sh "+model_name+" "+data_name+" "+data_url)
+    result1=os.system("sh ./model_doctor-main/scripts/train.sh "+model_name+" "+data_name+" "+data_url)
+    print("result: ",result1)
 
-    os.system("python ./model_doctor-main/train.py --model_name {model_name} --data_name {data_name} --in_channels 3 --num_classes 10 --num_epochs {num_epochs} --model_dir {model_dir} --data_dir {data_dir} --log_dir {log_dir} --device_index {device_index}".format(model_name=model_name,data_name=data_name,num_epochs=num_epochs,model_dir=model_dir,data_dir=data_dir,log_dir=log_dir,device_index=device_index))
+    print("sh ./model_doctor-main/scripts/image_sift.sh " + model_name + " " + data_name+" "+data_url)
+    result2 = os.system("sh ./model_doctor-main/scripts/image_sift.sh " + model_name + " " + data_name+" "+data_url)
+    print("result: ",result2)
 
-    model_path=os.path.join(result_path,exp_name,'models/model_ori.pth')
-    data_path=os.path.join('./model_doctor-main/datasets',data_name,'train')
-    image_path=os.path.join(result_path,exp_name,'images_50')
-    num_images=50
+    print("sh ./model_doctor-main/scripts/grad_calculate.sh " + model_name + " " + data_name)
+    result3 = os.system("sh ./model_doctor-main/scripts/grad_calculate.sh " + model_name + " " + data_name)
+    print("result: ",result3)
 
-    print("python ./model_doctor-main/core/image_sift.py --model_name {model_name} --data_name {data_name} --in_channels {in_channels} --num_classes {num_classes} --model_path {model_path} --data_path {data_path} --image_path {image_path} --num_images {num_images} --device_index {device_index}".format(model_name=model_name,data_name=data_name,in_channels=in_channels,num_classes=num_classes,model_path=model_path,data_path=data_path,image_path=image_path,num_images=num_images,device_index=device_index))
-    os.system("python ./model_doctor-main/core/image_sift.py --model_name {model_name} --data_name {data_name} --in_channels {in_channels} --num_classes {num_classes} --model_path {model_path} --data_path {data_path} --image_path {image_path} --num_images {num_images} --device_index {device_index}".format(model_name=model_name,data_name=data_name,in_channels=in_channels,num_classes=num_classes,model_path=model_path,data_path=data_path,image_path=image_path,num_images=num_images,device_index=device_index))
+    # R=os.path.join('./model_doctor-main/output',model_name+"_"+data_name,'grads_50')
 
-    data_path=os.path.join(result_path,exp_name,'images_50')
-    grad_path=os.path.join(result_path,exp_name,'grads_50')
-    theta = 0.2
-    print("python ./model_doctor-main/core/grad_calculate.py --model_name {model_name} --data_name {data_name} --in_channels {in_channels} --num_classes {num_classes} --model_path {model_path} --data_path {data_path} --grad_path {grad_path} --theta {theta} --device_index {device_index}".format(model_name=model_name,data_name=data_name,in_channels=in_channels,num_classes=num_classes,model_path=model_path,data_path=data_path,grad_path=grad_path,theta=theta,device_index=device_index))
-    os.system("python ./model_doctor-main/core/grad_calculate.py --model_name {model_name} --data_name {data_name} --in_channels {in_channels} --num_classes {num_classes} --model_path {model_path} --data_path {data_path} --grad_path {grad_path} --theta {theta} --device_index {device_index}".format(model_name=model_name,data_name=data_name,in_channels=in_channels,num_classes=num_classes,model_path=model_path,data_path=data_path,grad_path=grad_path,theta=theta,device_index=device_index))
+    # if not os.path.exists(RESULT_URL):
+    #     # 如果目标路径不存在原文件夹的话就创建
+    #     os.makedirs(RESULT_URL)
 
-
-
-    print("QQQQQQ")
-    #result1=os.system("sh ../model_doctor-main/scripts/train.sh "+model_name+" "+data_name)
-    #print("train.sh:",result1)
-    #result2 = os.system("sh ../model_doctor-main/scripts/image_sift.sh " + model_name + " " + data_name)
-   # print("image_sift.sh:", result2)
-    #result3 = os.system("sh ../model_doctor-main/scripts/grad_calculate.sh " + model_name + " " + data_name)
-   # print("grad_calculate.sh:", result3)
-    R=os.path.join('./model_doctor-main/output',model_name+"_"+data_name,'grads_50')
-
-
-    if not os.path.exists(RESULT_URL):
-        # 如果目标路径不存在原文件夹的话就创建
-        os.makedirs(RESULT_URL)
-
-    if os.path.exists(R):
-        # root 所指的是当前正在遍历的这个文件夹的本身的地址
-        # dirs 是一个 list，内容是该文件夹中所有的目录的名字(不包括子目录)
-        # files 同样是 list, 内容是该文件夹中所有的文件(不包括子目录)
-        for root, dirs, files in os.walk(R):
-            for file in files:
-                src_file = os.path.join(root, file)
-                shutil.copy(src_file, RESULT_URL)
-               # print(src_file)
-    print('copy dir finished!')
-    ####  result4 = os.system("python ../model_doctor-main/preprocessing/labelme_to_mask.py")
-    ####  print("labelme_to_mask.py:", result4)
+    # if os.path.exists(R):
+    #     # root 所指的是当前正在遍历的这个文件夹的本身的地址
+    #     # dirs 是一个 list，内容是该文件夹中所有的目录的名字(不包括子目录)
+    #     # files 同样是 list, 内容是该文件夹中所有的文件(不包括子目录)
+    #     for root, dirs, files in os.walk(R):
+    #         for file in files:
+    #             src_file = os.path.join(root, file)
+    #             shutil.copy(src_file, RESULT_URL)
+    #            # print(src_file)
+    # print('copy dir finished!')
+    # ####  result4 = os.system("python ../model_doctor-main/preprocessing/labelme_to_mask.py")
+    # ####  print("labelme_to_mask.py:", result4)
 
 
 
@@ -306,30 +272,17 @@ def add_mark():  # 标注上传到MARK URL中（一个文件夹）
 
 @app.route('/modeldoctor/task/step2', methods=['post'])
 def second_run():
-    # # 治疗的工具参数
-    # focus_on_the_sample = request.json.get('focus_on_the_sample')
-    # focus_on_the_component = request.json.get('focus_on_the_component')
-    # focus_on_the_path1 = request.json.get('focus_on_the_path1')
-    # # 缺陷诊断的工具参数
-    # focus_on_the_primitive_character = request.json.get('focus_on_the_primitive_character')
-    # focus_on_the_path2 = request.json.get('focus_on_the_path2')
-    # # 错误原因显示参数
-    # cause = request.json.get('cause')
-    # # 治疗部位
-    # treatment = request.json.get('treatment')
-
     # 模型和数据
     model_id = request.json.get('model_id')
     data_id = request.json.get('data_id')
-    # model = Model.query.filter_by(id=model_id).first().model_url
-    # data = Data.query.filter_by(id=data_id).first().data_url
+    data_url = Data.query.filter_by(id=data_id).first().data_url
     model_name = Model.query.filter_by(id=model_id).first().model_name
-    data_name = Data.query.filter_by(id=model_id).first().data_name
+    data_name = Data.query.filter_by(id=data_id).first().data_name
     data_name='cifar10'
    # 第二次模型训练的预备参数
-    print("sh ./model_doctor-main/scripts/train_model_doctor.sh " + model_name + " " + data_name)
+    print("sh ./model_doctor-main/scripts/train_model_doctor.sh " + model_name + " " + data_name+" "+data_url)
    
-    result4 = os.system("sh ./model_doctor-main/scripts/train_model_doctor.sh " + model_name + " " + data_name)
+    result4 = os.system("sh ./model_doctor-main/scripts/train_model_doctor.sh " + model_name + " " + data_name+" "+data_url)
     print("train_model_doctor.sh:", result4)
 
     '''

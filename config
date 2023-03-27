@@ -6,8 +6,8 @@ port = 3306
 db = doctor
 
 [save_url]
-model = ./storage/model/
-data = ./storage/dataset/
+model = ./model_doctor-main/models/
+data = ./model_doctor-main/datasets/
 pics = ./storage/pics/
 mark = ./storage/mark/
 weight = ./storage/weight/
