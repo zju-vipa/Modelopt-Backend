@@ -2,6 +2,7 @@ import collections
 import os
 import argparse
 import time
+import json
 
 import torch
 from torch import nn
@@ -23,6 +24,11 @@ def main():
     parser.add_argument('--device_index', default='0', type=str, help='device index')
     args = parser.parse_args()
 
+    cfg = json.load(open('model_doctor-main/configs/config_trainer.json'))[args.data_name]
+    
+    args.in_channels=cfg['model']['in_channels']
+    args.num_classes=cfg['model']['num_classes']
+    
     # ----------------------------------------
     # basic configuration
     # ----------------------------------------
@@ -37,7 +43,8 @@ def main():
     # ----------------------------------------
     # trainer configuration
     # ----------------------------------------
-    model = models.load_model(model_name=args.model_name, num_classes=args.num_classes)
+    # model = models.load_model(model_name=args.model_name, num_classes=args.num_classes)
+    model = models.load_model(model_name=args.model_name, data_name=args.data_name, in_channels=args.in_channels, num_classes=args.num_classes)
     model.load_state_dict(torch.load(args.model_path))
     model.to(device)
     model.eval()

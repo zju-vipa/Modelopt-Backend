@@ -16,7 +16,7 @@ def load_data(data_name, data_path, data_type=None):
     print('DATA TYPE:', data_type)
     print('-' * 50)
 
-    assert data_name in ['cifar10', 'cifar100', 'mnist', 'fashion_mnist', 'svhn', 'stl10', 'mnin']
+    assert data_name in ['cifar10', 'cifar100', 'mnist', 'fashion-mnist', 'svhn', 'stl10', 'mini-imagenet']
 
     data_loader = None
     if data_name == 'cifar10':
@@ -25,13 +25,13 @@ def load_data(data_name, data_path, data_type=None):
         data_loader = load_cifar100(data_path, data_type)
     elif data_name == 'mnist':
         data_loader = load_mnist(data_path, data_type)
-    elif data_name == 'fashion_mnist':
+    elif data_name == 'fashion-mnist':
         data_loader = load_fashion_mnist(data_path, data_type)
     elif data_name == 'svhn':
         data_loader = load_svhn(data_path, data_type)
     elif data_name == 'stl10':
         data_loader = load_stl10(data_path, data_type)
-    elif data_name == 'mnin':
+    elif data_name == 'mini-imagenet':
         data_loader = load_mnin(data_path, data_type)
     return data_loader
 

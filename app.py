@@ -18,11 +18,20 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from common.getConfig import getConfig
 from common.new_alchemy_encoder import new_alchemy_encoder
+
+import io
+from base64 import encodebytes
+from PIL import Image
+from flask import jsonify
 ####
 
 app = Flask(__name__,
             template_folder="../modelopt-frontend/dist/",
             static_folder="../modelopt-frontend/dist/static/")
+
+# app = Flask(__name__,
+#             template_folder="../modelopt-frontend/dist/",
+#             static_folder="../modelopt-frontend/dist/static/")
 
 # 获取mysql配置信息
 HOSTNAME = getConfig("config", 'mysql', 'host')  # def getConfig(filename, section, option):
@@ -31,9 +40,12 @@ USERNAME = getConfig("config", 'mysql', 'user')
 PASSWORD = getConfig("config", 'mysql', 'password')
 DATABASE = getConfig("config", 'mysql', 'db')
 
+
 # 文件存储url配置信息
+SCRIPT_URL = getConfig("config", 'save_url', 'scripts')
 MODEL_URL = getConfig("config", "save_url", "model")
 DATA_URL = getConfig("config", "save_url", "data")
+OUTPUT_URL = getConfig("config", "save_url", "output")
 PICS_URL = getConfig("config", "save_url", "pics")
 MARK_URL = getConfig("config", "save_url", "mark")
 RESULT_URL = getConfig("config", "save_url", "result")
@@ -65,6 +77,14 @@ result = ./static/result
 '''
 
 
+class User(db.Model):
+    __tablename__ = 'user'  # 表名
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    rule = db.Column(db.Integer, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(255), nullable=False)  # 四列数据构造
+
 class Model(db.Model):
     __tablename__ = 'model'  # 表名
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -90,6 +110,138 @@ class Task(db.Model):
     weight_url = db.Column(db.String(255), nullable=False)
 
 
+
+@app.route('/login', methods=['post'])
+def login():
+    print("login")
+    check_name = request.json.get('name')
+    check_password = request.json.get('password')
+    user = User.query.filter_by(name=check_name).first()
+    if user is None:
+        return "0"
+    password = user.password
+    if password==check_password:
+        return "1"
+    else:
+        return "0"
+
+@app.route('/register', methods=['post'])
+def register():
+    print("register")
+    register_name = request.json.get('name')
+    register_password = request.json.get('password')
+    register_email = request.json.get('email')
+    print(register_name)
+    print(User.query.filter_by(name=register_name))
+    check_name = User.query.filter_by(name=register_name).first()
+    
+    if check_name is None:
+        user = User(name=register_name, password=register_password, email=register_email, rule=0)
+        db.session.add(user)
+        db.session.commit()  
+        return "1"
+    else:
+        return "0"        
+
+@app.route('/motifyPassword', methods=['post'])
+def motifyPassword():
+    print("motifyPassword")
+    name = request.json.get('name')
+    old_password = request.json.get('old_password')
+    new_password = request.json.get('new_password')
+    user = User.query.filter_by(name=name).first()
+    
+    if user is not None and old_password==user.password:
+        user.password = new_password
+        db.session.add(user)
+        db.session.commit()  
+        return "1"
+    else:
+        return "0" 
+    
+# user management
+@app.route('/getAllUsers', methods=['post'])
+def getAllUsers():
+    print("getAllUser")
+    users = User.query.all()
+    users = json.dumps(users, cls=new_alchemy_encoder(), check_circular=False)  # 进行json序列化
+    print(users)
+    return users
+
+@app.route('/addUser', methods=['post'])
+def addUser():
+    print("addUser")
+    name = request.json.get('name')
+    password = request.json.get('password')
+    rule = request.json.get('rule')
+    email = request.json.get('email')
+    user = User.query.filter_by(name=name).first()
+    if user is None:
+        new_user = User(rule=rule, name=name, password=password, email=email)
+        db.session.add(new_user)
+        db.session.commit()  
+        return "0"
+    else:
+        return "1" 
+
+@app.route('/getSelectedusers', methods=['post'])
+def getSelectedusers():
+    print("getSelectedusers")
+    name = request.json.get('name')
+    users = User.query.filter(User.name.like('%'+name+'%')).all()
+    users = json.dumps(users, cls=new_alchemy_encoder(), check_circular=False)  # 进行json序列化
+    print(users)
+    return users
+
+@app.route('/getEditUser', methods=['post'])
+def getEditUser():
+    print("getEditUser")
+    name = request.json.get('name')
+    user = User.query.filter_by(name=name).first()
+    user = json.dumps(user, cls=new_alchemy_encoder(), check_circular=False)  # 进行json序列化
+    print(user)
+    return user
+
+@app.route('/submitEdit', methods=['post'])
+def submitEdit():
+    print("submitEdit")
+    name = request.json.get('name')
+    newpassword = request.json.get('newpassword')
+    user = User.query.filter_by(name=name).first()
+    user.password = newpassword
+    db.session.commit()
+    user = User.query.filter_by(name=name).first()
+    if user.password == newpassword:
+        return "0"
+    else:
+        return "1" 
+
+@app.route('/deleteUser', methods=['post'])
+def deleteUser():
+    print("deleteUser")
+    name = request.json.get('name')
+    user = User.query.filter_by(name=name).first()
+    db.session.delete(user)
+    db.session.commit()  
+    user = User.query.filter_by(name=name).first()
+    if user is None: 
+        return "0"
+    else:
+        return "1" 
+
+@app.route('/delete_user', methods=['post'])
+def delete_user():
+    print("delete_user")
+    name = request.json.get('name')
+    user = User.query.filter_by(name=name).first()
+    if user is not None:
+        db.session.delete(user)
+        db.session.commit()  
+        return "1"
+    else:
+        return "0"    
+    
+       
 '''
     模型页面
     1.进去刷新列表 GET /modeldoctor/model
@@ -141,7 +293,7 @@ def add_data():
     file = request.files['file']
     data_name = file.filename.split(".")[0]
     print("data_name: ",data_name)
-    assert data_name in ['cifar10', 'cifar100', 'mnist', 'fashion_mnist', 'svhn', 'stl10', 'mnin']
+    assert data_name in ['cifar10', 'cifar100', 'mnist', 'fashion-mnist', 'svhn', 'stl10', 'mini-imagenet']
     
     file.save('{}{}'.format(DATA_URL, file.filename))
     zip_file = zipfile.ZipFile(file)
@@ -156,11 +308,24 @@ def add_data():
         print("python ./model_doctor-main/preprocessing/cifar/"+data_name+"_gen.py")
         os.system("python ./model_doctor-main/preprocessing/cifar/"+data_name+"_gen.py")
         data_url="./model_doctor-main/datasets/cifar100/processed"
-    # elif data_name == 'mnist':
-    #     print("python ./model_doctor-main/preprocessing/cifar/"+data_name+"_gen.py")
-    #     os.system("python ./model_doctor-main/preprocessing/cifar/"+data_name+"_gen.py")
-    #     data_url="./model_doctor-main/datasets/cifar100/processed"
-
+    elif data_name == 'mnist':
+        print("python ./model_doctor-main/preprocessing/mnist/image_gen.py")
+        os.system("python ./model_doctor-main/preprocessing/mnist/image_gen.py")
+        data_url="./model_doctor-main/datasets/mnist"
+    elif data_name == 'fashion-mnist':
+        print("python ./model_doctor-main/preprocessing/fashion-mnist/image_gen.py")
+        os.system("python ./model_doctor-main/preprocessing/fashion-mnist/image_gen.py")
+        data_url="./model_doctor-main/datasets/fashion-mnist"
+    elif data_name == 'stl10':
+        print("python ./model_doctor-main/preprocessing/stl10/image_gen_train.py")
+        os.system("python ./model_doctor-main/preprocessing/stl10/image_gen_train.py")
+        print("python ./model_doctor-main/preprocessing/stl10/image_gen_test.py")
+        os.system("python ./model_doctor-main/preprocessing/stl10/image_gen_test.py")
+        data_url="./model_doctor-main/datasets/stl10"
+    elif data_name == 'mini-imagenet':
+        print("python ./model_doctor-main/preprocessing/mini-imagenet/image_gen.py")
+        os.system("python ./model_doctor-main/preprocessing/mini-imagenet/image_gen.py")
+        data_url="./model_doctor-main/datasets/mini-imagenet/images"
     data = Data(time=datetime.now(), data_name=data_name, data_url=data_url)
     db.session.add(data)
     db.session.commit()  # 上传数据集并add到数据表
@@ -177,34 +342,8 @@ def add_data():
     6.下载模型优化权重(分文件夹存储) GET /modeldoctor/task/weigtht
 '''
 
-
-'''
-export result_path='../output/'
-export model_name=$1
-export data_name=$2
-export exp_name=${model_name}+'_'+${data_name}+'_22051035'
-export in_channels=3
-export num_classes=10
-export num_epochs=10
-export model_dir=${result_path}${exp_name}'/models'
-export data_dir='../datasets/'${data_name}'/images'
-export log_dir=${result_path}'/runs/'${exp_name}
-export device_index='0'
-python ../train.py \
-  --model_name ${model_name} \
-  --data_name ${data_name} \
-  --in_channels ${in_channels} \
-  --num_classes ${num_classes} \
-  --num_epochs ${num_epochs} \
-  --model_dir ${model_dir} \
-  --data_dir ${data_dir} \
-  --log_dir ${log_dir} \
-  --device_index ${device_index}.
-'''
-
-
 @app.route('/modeldoctor/task/step1', methods=['post'])
-def first_run():
+def model_diagnose():
     # 模型和数据
     model_id = request.json.get('model_id')
     data_id = request.json.get('data_id')
@@ -215,47 +354,53 @@ def first_run():
     model_name = Model.query.filter_by(id=model_id).first().model_name
     data_name = Data.query.filter_by(id=data_id).first().data_name
     
-    print("sh ./model_doctor-main/scripts/train.sh "+model_name+" "+data_name+" "+data_url)
-    result1=os.system("sh ./model_doctor-main/scripts/train.sh "+model_name+" "+data_name+" "+data_url)
-    print("result: ",result1)
+    res_path = OUTPUT_URL + model_name + "_" + data_name
+    
+    if not os.path.exists(res_path+'/models/model_ori.pth'):
+        print("sh " + SCRIPT_URL + "train.sh "+ model_name + " " + data_name + " " + data_url)
+        result1=os.system("sh " + SCRIPT_URL + "train.sh " + model_name + " " + data_name + " " + data_url)
+        print("result: ",result1)
 
-    print("sh ./model_doctor-main/scripts/image_sift.sh " + model_name + " " + data_name+" "+data_url)
-    result2 = os.system("sh ./model_doctor-main/scripts/image_sift.sh " + model_name + " " + data_name+" "+data_url)
-    print("result: ",result2)
+    if not os.path.exists(res_path+"/images_50/"):
+        print("sh " + SCRIPT_URL + "image_sift.sh " + model_name + " " + data_name + " " + data_url)
+        result2 = os.system("sh " + SCRIPT_URL + "image_sift.sh " + model_name + " " + data_name + " " + data_url)
+        print("result: ",result2)
 
-    print("sh ./model_doctor-main/scripts/grad_calculate.sh " + model_name + " " + data_name)
-    result3 = os.system("sh ./model_doctor-main/scripts/grad_calculate.sh " + model_name + " " + data_name)
-    print("result: ",result3)
+    if not os.path.exists(res_path+"/grads_50/"):
+        print("sh " + SCRIPT_URL + "grad_calculate.sh " + model_name + " " + data_name)
+        result3 = os.system("sh " + SCRIPT_URL + "grad_calculate.sh " + model_name + " " + data_name)
+        print("result: ",result3)
 
-    # R=os.path.join('./model_doctor-main/output',model_name+"_"+data_name,'grads_50')
+    if not os.path.exists(res_path+"/sift_visual/"):
+        print("sh " + SCRIPT_URL + "grad_sift.sh " + model_name + " " + data_name + " " + data_url)
+        result4 = os.system("sh " + SCRIPT_URL + "grad_sift.sh " + model_name + " " + data_name + " " + data_url)
+        print("result: ",result4)
 
-    # if not os.path.exists(RESULT_URL):
-    #     # 如果目标路径不存在原文件夹的话就创建
-    #     os.makedirs(RESULT_URL)
+    if not os.path.exists(res_path+"/grad_visual/"):
+        print("sh " + SCRIPT_URL + "grad_visualize.sh " + model_name + " " + data_name + " " + data_url)
+        result5 = os.system("sh " + SCRIPT_URL + "grad_visualize.sh " + model_name + " " + data_name + " " + data_url)
+        print("result: ",result5)
+        
+    if not os.path.exists(res_path+"/route_visual/route.jpg"):
+        print("sh " + SCRIPT_URL + "model_route_path.sh " + model_name + " " + data_name + " " + data_url)
+        result6 = os.system("sh " + SCRIPT_URL + "model_route_path.sh " + model_name + " " + data_name + " " + data_url)
+        print("result: ",result6)
 
-    # if os.path.exists(R):
-    #     # root 所指的是当前正在遍历的这个文件夹的本身的地址
-    #     # dirs 是一个 list，内容是该文件夹中所有的目录的名字(不包括子目录)
-    #     # files 同样是 list, 内容是该文件夹中所有的文件(不包括子目录)
-    #     for root, dirs, files in os.walk(R):
-    #         for file in files:
-    #             src_file = os.path.join(root, file)
-    #             shutil.copy(src_file, RESULT_URL)
-    #            # print(src_file)
-    # print('copy dir finished!')
-    # ####  result4 = os.system("python ../model_doctor-main/preprocessing/labelme_to_mask.py")
-    # ####  print("labelme_to_mask.py:", result4)
-
-
-
-    '''
-    此处利用以上参数进行训练，待补充
-    '''
-    # 训练结束后，保存待标记的图片 和诊断图片 分别存到 PICS_URL、RESULT_URL
-    '''
-    待补充
-    '''
-    return redirect('/')
+    
+    # image_paths = [res_path+"/sift_visual/channel_grads_-1.png", res_path+"/grad_visual/grad response/high confidence/0.png"]
+    # return jsonify({'result': image_paths})
+    image_paths = {'channel':res_path+"/sift_visual/channel_grads_-1.png", 
+                   'cam':res_path+"/grad_visual/grad response/high confidence/0.png", 
+                   'origin':res_path+"/grad_visual/origin/0.png",
+                   'route':res_path+"/route_visual/route.jpg"}
+    encoded_imges = {}
+    for type in image_paths:
+        pil_img = Image.open(image_paths[type], mode='r') # reads the PIL image
+        byte_arr = io.BytesIO()
+        pil_img.save(byte_arr, format='PNG')
+        encoded_img = encodebytes(byte_arr.getvalue()).decode('ascii')
+        encoded_imges[type]=encoded_img
+    return jsonify({'result': encoded_imges})
 
 
 @app.route('/modeldoctor/task/pics', methods=['get'])
@@ -271,43 +416,175 @@ def add_mark():  # 标注上传到MARK URL中（一个文件夹）
 
 
 @app.route('/modeldoctor/task/step2', methods=['post'])
-def second_run():
+def model_treat():
     # 模型和数据
     model_id = request.json.get('model_id')
     data_id = request.json.get('data_id')
+    kernel_radio = request.json.get('kernel_radio')
+    background_radio = request.json.get('background_radio')
+    route_radio = request.json.get('route_radio')
+    layers = request.json.get('layers')
+          
     data_url = Data.query.filter_by(id=data_id).first().data_url
     model_name = Model.query.filter_by(id=model_id).first().model_name
     data_name = Data.query.filter_by(id=data_id).first().data_name
-    data_name='cifar10'
-   # 第二次模型训练的预备参数
-    print("sh ./model_doctor-main/scripts/train_model_doctor.sh " + model_name + " " + data_name+" "+data_url)
-   
-    result4 = os.system("sh ./model_doctor-main/scripts/train_model_doctor.sh " + model_name + " " + data_name+" "+data_url)
-    print("train_model_doctor.sh:", result4)
+    treat_model=1
+    if kernel_radio == '1' and background_radio == '1':
+        treat_model=1
+    elif kernel_radio == '1':
+        treat_model=2
+    else:
+        treat_model=3
+    result1 = 1
+    
+    print("kernel_radio", kernel_radio)
+    print("background_radio", background_radio)
+    print("route_radio", route_radio)
+    
+    res_path = OUTPUT_URL + model_name + "_" + data_name
+    
+    if treat_model == 1:
+        if not os.path.exists(res_path+"/models/model_optim_" + str(layers) + ".pth"):
+            print("sh " + SCRIPT_URL + "train_model_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result1 = os.system("sh " + SCRIPT_URL + "train_model_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("train_model_doctor.sh:", result1)
 
-    '''
-    此处利用以上参数进行训练，待补充
-    '''
+        if not os.path.exists(res_path+"/images_50_optim_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "image_sift_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result2 = os.system("sh " + SCRIPT_URL + "image_sift_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result2)
+
+        if not os.path.exists(res_path+"/grads_50_optim_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "grad_calculate_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result3 = os.system("sh " + SCRIPT_URL + "grad_calculate_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result3)
+
+        if not os.path.exists(res_path+"/sift_visual_optim_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "grad_sift_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result4 = os.system("sh " + SCRIPT_URL + "grad_sift_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result4)
+
+        if not os.path.exists(res_path+"/grad_visual_optim_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "grad_visualize_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result5 = os.system("sh " + SCRIPT_URL + "grad_visualize_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result5)
+            
+        if not os.path.exists(res_path+"/route_visual/route_optim_" + str(layers) + ".jpg"):
+            print("sh " + SCRIPT_URL + "model_route_path_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result6 = os.system("sh " + SCRIPT_URL + "model_route_path_doctor.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result6)
+
+        
+    elif treat_model == 2:
+        if not os.path.exists(res_path+"/models/model_optim_spa_" + str(layers) + ".pth"):
+            print("sh " + SCRIPT_URL + "train_model_doctor_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result1 = os.system("sh " + SCRIPT_URL + "train_model_doctor_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("train_model_doctor_spatial.sh:", result1)
+
+        if not os.path.exists(res_path+"/images_50_optim_spa_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "image_sift_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result2 = os.system("sh " + SCRIPT_URL + "image_sift_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result2)
+
+        if not os.path.exists(res_path+"/grads_50_optim_spa_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "grad_calculate_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result3 = os.system("sh " + SCRIPT_URL + "grad_calculate_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result3)
+
+        if not os.path.exists(res_path+"/sift_visual_optim_spa_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "grad_sift_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result4 = os.system("sh " + SCRIPT_URL + "grad_sift_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result4)
+
+        if not os.path.exists(res_path+"/grad_visual_optim_spa_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "grad_visualize_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result5 = os.system("sh " + SCRIPT_URL + "grad_visualize_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result5)
+            
+        if not os.path.exists(res_path+"/route_visual/route_optim_spa_" + str(layers) + ".jpg"):
+            print("sh " + SCRIPT_URL + "model_route_path_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result6 = os.system("sh " + SCRIPT_URL + "model_route_path_spatial.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result6)
+
+        
+    elif treat_model == 3:
+        if not os.path.exists(res_path+"/models/model_optim_cha_" + str(layers) + ".pth"):
+            print("sh " + SCRIPT_URL + "train_model_doctor_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result1 = os.system("sh " + SCRIPT_URL + "train_model_doctor_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("train_model_doctor_channel.sh:", result1)
+
+        if not os.path.exists(res_path+"/images_50_optim_cha_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "image_sift_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result2 = os.system("sh " + SCRIPT_URL + "image_sift_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result2)
+
+        if not os.path.exists(res_path+"/grads_50_optim_cha_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "grad_calculate_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result3 = os.system("sh " + SCRIPT_URL + "grad_calculate_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result3)
+
+        if not os.path.exists(res_path+"/sift_visual_optim_cha_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "grad_sift_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result4 = os.system("sh " + SCRIPT_URL + "grad_sift_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result4)
+
+        if not os.path.exists(res_path+"/grad_visual_optim_cha_" + str(layers) + "/"):
+            print("sh " + SCRIPT_URL + "grad_visualize_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result5 = os.system("sh " + SCRIPT_URL + "grad_visualize_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result5)
+            
+        if not os.path.exists(res_path+"/route_visual/route_optim_cha_" + str(layers) + ".jpg"):
+            print("sh " + SCRIPT_URL + "train_model_doctor_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            result6 = os.system("sh " + SCRIPT_URL + "train_model_doctor_channel.sh " + model_name + " " + data_name + " " + data_url + " " + str(layers))
+            print("result: ",result6)
+
     # 训练结束后，保存权重以及保存任务记录
     now_time = datetime.now()
     now_time_str = datetime.strftime(now_time, '%Y%m%d%H%M%S')
     if not os.path.exists('{}{}'.format(WEIGHT_URL, now_time_str)):
         os.mkdir('{}{}'.format(WEIGHT_URL, now_time_str))  # 如果不存在权重url则构造权重url
     # 将权重文件保存到该文件夹(按时间戳分文件夹保存)
-    #weight = np.arange(12)
-    weight = os.path.join("./model_doctor-main/output", model_name + "_" + data_name , "models",
-                          "model_optim.pth")
-    '''
-    待补充
-    '''
+    if treat_model == 1:
+        weight = os.path.join("./model_doctor-main/output", model_name + "_" + data_name , "models",
+                            'model_optim_' + str(layers) + '.pth')
+    elif treat_model == 2:
+        weight = os.path.join("./model_doctor-main/output", model_name + "_" + data_name , "models",
+                            'model_optim_spa_' + str(layers) + '.pth')
+    elif treat_model == 3:
+        weight = os.path.join("./model_doctor-main/output", model_name + "_" + data_name , "models",
+                            'model_optim_cha_' + str(layers) + '.pth')
+        
     shutil.copyfile(weight, '{}{}/{}'.format(WEIGHT_URL, now_time_str, WEIGHT_NAME))
-    #weight.tofile('{}{}/{}'.format(WEIGHT_URL, now_time_str, WEIGHT_NAME))
     # 新增任务记录
     task = Task(time=now_time_str, model_id=model_id, data_id=data_id,
                 weight_url='{}{}/'.format(WEIGHT_URL, now_time_str))
     db.session.add(task)
     db.session.commit()  # 上传一条数据到task数据库中
-    return redirect('/')
+    # return redirect('/')
+    if treat_model == 1:
+        image_paths = {'channel':res_path+"/sift_visual_optim_" + str(layers) + "/channel_grads_-1.png", 
+                    'cam':res_path+"/grad_visual_optim_" + str(layers) + "/grad response/high confidence/0.png", 
+                    'origin':res_path+"/grad_visual_optim_" + str(layers) + "/origin/0.png",
+                    'route':res_path+"/route_visual/route_optim_" + str(layers) + ".jpg"}
+    elif treat_model == 2:
+        image_paths = {'channel':res_path+"/sift_visual_optim_spa_" + str(layers) + "/channel_grads_-1.png", 
+                    'cam':res_path+"/grad_visual_optim_spa_" + str(layers) + "/grad response/high confidence/0.png", 
+                    'origin':res_path+"/grad_visual_optim_spa_" + str(layers) + "/origin/0.png",
+                    'route':res_path+"/route_visual/route_optim_spa_" + str(layers) + ".jpg"}
+    elif treat_model == 3:
+        image_paths = {'channel':res_path+"/sift_visual_optim_cha_" + str(layers) + "/channel_grads_-1.png", 
+                        'cam':res_path+"/grad_visual_optim_cha_" + str(layers) + "/grad response/high confidence/0.png", 
+                        'origin':res_path+"/grad_visual_optim_cha_" + str(layers) + "/origin/0.png",
+                        'route':res_path+"/route_visual/route_optim_cha_" + str(layers) + ".jpg"}
+            
+    encoded_imges = {}
+    for type in image_paths:
+        pil_img = Image.open(image_paths[type], mode='r') # reads the PIL image
+        byte_arr = io.BytesIO()
+        pil_img.save(byte_arr, format='PNG')
+        encoded_img = encodebytes(byte_arr.getvalue()).decode('ascii')
+        encoded_imges[type]=encoded_img
+    return jsonify({'result': encoded_imges})
 
 
 @app.route('/modeldoctor/task/result', methods=['get'])
@@ -323,10 +600,11 @@ def get_result():
     return url_list  # get诊断结果，从resulturl
 
 
-@app.route('/modeldoctor/task/weight', methods=['get'])
+@app.route('/modeldoctor/task/weight', methods=['post'])
 def get_weight():
     late_finish_date = Task.query.order_by(db.desc(Task.time)).first().time
     late_finish_date = datetime.strftime(late_finish_date, '%Y%m%d%H%M%S')
+    print('{}{}/'.format(WEIGHT_URL, late_finish_date), '{}'.format(WEIGHT_NAME))
     return send_from_directory('{}{}/'.format(WEIGHT_URL, late_finish_date), '{}'.format(WEIGHT_NAME),
                                as_attachment=True)
 
@@ -342,7 +620,7 @@ def get_weight():
 def get_history():
     task = Task.query.all()  # 查询Task表
     history = []
-    
+    print("get_history")
     for task_item in task:
         x = {
             "id": task_item.id,
@@ -367,8 +645,6 @@ def get_history_weight():
         return response
     except Exception as e:
         return jsonify({"code": "异常", "message": "{}".format(e)})
-    # return send_from_directory(download_url, '{}'.format(WEIGHT_NAME), as_attachment=True)
-  # 下载链接生成
 
 
 @app.route('/')

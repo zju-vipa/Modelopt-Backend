@@ -7,6 +7,7 @@ import os
 import torch
 import argparse
 from tqdm import tqdm
+import json
 
 import loaders
 import models
@@ -15,7 +16,7 @@ from utils import file_util
 
 class ImageSift:
     def __init__(self, num_classes, num_images, is_high_confidence=True):
-        self.names = [[None for j in range(num_images)] for i in range(num_classes)]
+        self.names = [['' for j in range(num_images)] for i in range(num_classes)]
         self.scores = torch.zeros((num_classes, num_images))
         self.nums = torch.zeros(num_classes, dtype=torch.long)
         self.is_high_confidence = is_high_confidence
@@ -23,7 +24,6 @@ class ImageSift:
     def __call__(self, outputs, labels, names):
         softmax = torch.nn.Softmax(dim=1)(outputs.detach())
         scores, predicts = torch.max(softmax, dim=1)
-        # print(scores)
 
         if self.is_high_confidence:
             for i, label in enumerate(labels):
@@ -64,7 +64,7 @@ class ImageSift:
         print(self.nums)
 
         class_names = sorted([d.name for d in os.scandir(input_path) if d.is_dir()])
-
+        print(self.names)
         for label, image_list in enumerate(self.names):
             for image in tqdm(image_list):
                 class_name = class_names[label]
@@ -87,15 +87,20 @@ def main():
     parser.add_argument('--device_index', default='0', type=str, help='device index')
     args = parser.parse_args()
 
+    cfg = json.load(open('model_doctor-main/configs/config_trainer.json'))[args.data_name]
+    
+    args.in_channels=cfg['model']['in_channels']
+    args.num_classes=cfg['model']['num_classes']
     # ----------------------------------------
     # basic configuration
     # ----------------------------------------
     os.environ["CUDA_VISIBLE_DEVICES"] = args.device_index
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
     if not os.path.exists(args.image_path):
         os.makedirs(args.image_path)
-
+    if args.data_name == 'cifar100':
+        args.num_images = 20
     print('-' * 50)
     print('TRAIN ON:', device)
     print('MODEL PATH:', args.model_path)
@@ -106,7 +111,8 @@ def main():
     # ----------------------------------------
     # model/data configuration
     # ----------------------------------------
-    model = models.load_model(model_name=args.model_name, num_classes=args.num_classes)
+    # model = models.load_model(model_name=args.model_name, num_classes=args.num_classes)
+    model = models.load_model(model_name=args.model_name, data_name=args.data_name, in_channels=args.in_channels, num_classes=args.num_classes)
     model.load_state_dict(torch.load(args.model_path))
     model.to(device)
     model.eval()
@@ -120,10 +126,11 @@ def main():
     # ----------------------------------------
     for samples in tqdm(data_loader):
         inputs, labels, names = samples
+        # print(labels)
+        # print(names)
         inputs = inputs.to(device)
         labels = labels.to(device)
         outputs = model(inputs)
-
         image_sift(outputs=outputs, labels=labels, names=names)
 
     image_sift.save_image(args.data_path, args.image_path)

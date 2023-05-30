@@ -1,0 +1,13 @@
+sh ./model_doctor-main/scripts/train.sh alexnet cifar10 ./model_doctor-main/datasets/cifar10
+
+sh ./model_doctor-main/scripts/train.sh alexnet cifar100 ./model_doctor-main/datasets/cifar100
+
+sh ./model_doctor-main/scripts/train.sh alexnet stl10 ./model_doctor-main/datasets/stl10
+
+sh ./model_doctor-main/scripts/train.sh alexnet mnist ./model_doctor-main/datasets/mnist
+
+sh ./model_doctor-main/scripts/train.sh alexnet fashion-mnist ./model_doctor-main/datasets/fashion-mnist
+
+sh ./model_doctor-main/scripts/train.sh alexnet mini-imagenet ./model_doctor-main/datasets/mini-imagenet
+
+

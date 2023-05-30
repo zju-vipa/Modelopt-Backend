@@ -2,6 +2,7 @@ import os
 import argparse
 import time
 from tqdm import tqdm
+import json
 
 import torch
 from torch import nn
@@ -29,11 +30,18 @@ def main():
     parser.add_argument('--log_dir', default='', type=str, help='log dir')
     parser.add_argument('--mask_dir', default=None, type=str, help='mask dir')
     parser.add_argument('--grad_dir', default='', type=str, help='grad dir')
+    parser.add_argument('--num_layer', default='0', type=int, help='num_layer')
     parser.add_argument('--alpha', default=0, type=float, help='weight coefficient for channel loss')
     parser.add_argument('--beta', default=0, type=float, help='weight coefficient for spatial loss')
     parser.add_argument('--device_index', default='0', type=str, help='device index')
     args = parser.parse_args()
 
+    cfg = json.load(open('model_doctor-main/configs/config_trainer.json'))[args.data_name]
+    
+    args.in_channels=cfg['model']['in_channels']
+    args.num_classes=cfg['model']['num_classes']
+    args.num_epochs=cfg['trainer']['num_epochs']
+    
     # ----------------------------------------
     # basic configuration
     # ----------------------------------------
@@ -43,7 +51,7 @@ def main():
     train_path = os.path.join(args.data_dir, 'train')
     test_path = os.path.join(args.data_dir, 'test')
     mask_path = args.mask_dir  # for train set
-    grad_path = os.path.join(args.grad_dir, 'layer_0.npy')
+    grad_path = os.path.join(args.grad_dir, 'layer_'+str(args.num_layer)+'.npy')
 
     print('-' * 50)
     print('TRAIN ON:', device)
@@ -55,9 +63,10 @@ def main():
     # ----------------------------------------
     # trainer configuration
     # ----------------------------------------
-    model = models.load_model(model_name=args.model_name, in_channels=args.in_channels, num_classes=args.num_classes)
+    # model = models.load_model(model_name=args.model_name, in_channels=args.in_channels, num_classes=args.num_classes)
+    model = models.load_model(model_name=args.model_name, data_name=args.data_name, in_channels=args.in_channels, num_classes=args.num_classes)
     model.to(device)
-    module = models.load_modules(model=model)[0]
+    module = models.load_modules(model=model)[args.num_layer]
 
     if args.beta == 0:
         train_loader = loaders.load_data(args.data_name, train_path, data_type='train')
@@ -110,6 +119,11 @@ def main():
 
         scheduler.step()
 
+    doctor_dict = {'best_acc':best_acc,'best_epoch':best_epoch,'time consume':time.time() - since}
+    
+    with open(args.log_dir+'/doctor_dict.json', 'w') as f:
+        json.dump(doctor_dict, f)
+        
     print('COMPLETE !!!')
     print('BEST ACC', best_acc)
     print('BEST EPOCH', best_epoch)

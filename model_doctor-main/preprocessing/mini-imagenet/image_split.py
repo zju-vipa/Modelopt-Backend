@@ -1,18 +1,16 @@
 import sys
 
-sys.path.append('/workspace/classification/code/')  # zjl
-# sys.path.append('/nfs3-p1/hjc/classification/code/')  # vipa
-
 import os
 import random
 
-from configs import config
+sys.path.append('./')
+sys.path.append('/home/lwd/Codes/modelOpt/modelopt-backend/model_doctor-main/')
 from utils import file_util
 
 
 def split():
-    SplitData(input_path=config.data_mini_imagenet_temp,
-              output_path=config.data_mini_imagenet)
+    SplitData(input_path='model_doctor-main/datasets/mini-imagenet/temp',
+              output_path='model_doctor-main/datasets/mini-imagenet/images_111')
 
 
 class SplitData:

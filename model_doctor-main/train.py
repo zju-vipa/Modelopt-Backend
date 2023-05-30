@@ -3,6 +3,10 @@ import argparse
 import time
 import shutil
 from tqdm import tqdm
+import json
+import sys
+
+sys.path.append('/home/lwd/Codes/modelOpt/modelopt-backend/model_doctor-main/')
 
 import torch
 from torch import nn
@@ -19,20 +23,35 @@ def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--model_name', default='', type=str, help='model name')
     parser.add_argument('--data_name', default='', type=str, help='data name')
-    parser.add_argument('--in_channels', default='', type=int, help='in channels')
-    parser.add_argument('--num_classes', default='', type=int, help='num classes')
+    parser.add_argument('--in_channels', default=3, type=int, help='in channels')
+    parser.add_argument('--num_classes', default=10, type=int, help='num classes')
     parser.add_argument('--num_epochs', default=200, type=int, help='num epochs')
     parser.add_argument('--model_dir', default='', type=str, help='model dir')
     parser.add_argument('--data_dir', default='', type=str, help='data dir')
     parser.add_argument('--log_dir', default='', type=str, help='log dir')
     parser.add_argument('--device_index', default='0', type=str, help='device index')
     args = parser.parse_args()
-
+    # ######## for debug
+    # args.model_name='alexnet'
+    # args.data_name='stl10'
+    # args.model_dir='model_doctor-main/output/alexnet_stl10/models'
+    # args.data_dir='./model_doctor-main/datasets/stl10'
+    # args.log_dir='model_doctor-main/output//runs/alexnet_stl10/'
+    # args.device_index='1'
+    # ######## for debug
+    
+    cfg = json.load(open('model_doctor-main/configs/config_trainer.json'))[args.data_name]
+    
+    args.in_channels=cfg['model']['in_channels']
+    args.num_classes=cfg['model']['num_classes']
+    args.num_epochs=cfg['trainer']['num_epochs']
+    
+    # ########
     # ----------------------------------------
     # basic configuration
     # ----------------------------------------
     os.environ["CUDA_VISIBLE_DEVICES"] = args.device_index
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
     train_path = os.path.join(args.data_dir, 'train')
     test_path = os.path.join(args.data_dir, 'test')
@@ -45,13 +64,15 @@ def main():
     print('-' * 50)
     print('TRAIN ON:', device)
     print('MODEL DIR:', args.model_dir)
+    print('DATA DIR:', args.data_dir)
     print('LOG DIR:', args.log_dir)
     print('-' * 50)
 
     # ----------------------------------------
     # trainer configuration
     # ----------------------------------------
-    model = models.load_model(args.model_name, num_classes=args.num_classes)
+    # model = models.load_model(args.model_name, num_classes=args.num_classes)
+    model = models.load_model(model_name=args.model_name, data_name=args.data_name, in_channels=args.in_channels, num_classes=args.num_classes)
     model.to(device)
 
     train_loader = loaders.load_data(args.data_name, train_path, data_type='train')
@@ -88,7 +109,12 @@ def main():
             torch.save(model.state_dict(), os.path.join(args.model_dir, 'model_ori.pth'))
 
         scheduler.step()
-
+    
+    train_dict = {'best_acc':best_acc,'best_epoch':best_epoch,'time consume':time.time() - since}
+    
+    with open(args.log_dir+'/train_dict.json', 'w') as f:
+        json.dump(train_dict, f)
+        
     print('COMPLETE !!!')
     print('BEST ACC', best_acc)
     print('BEST EPOCH', best_epoch)
@@ -108,7 +134,8 @@ def train(train_loader, model, criterion, optimizer, device):
         inputs, labels, _ = samples
         inputs = inputs.to(device)
         labels = labels.to(device)
-
+        # print(inputs[0])
+        # print(inputs.size())
         outputs = model(inputs)
         loss = criterion(outputs, labels)
         acc1, acc5 = metrics.accuracy(outputs, labels, topk=(1, 5))

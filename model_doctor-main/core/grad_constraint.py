@@ -25,6 +25,7 @@ class GradConstraint:
             else:
                 labels_.append(probs[i][0])  # FP rank1
         labels_ = torch.tensor(labels_).to(self.device)
+        
         nll_loss_ = torch.nn.NLLLoss()(outputs, labels_)
         loss += _loss_channel(channels=self.channels,
                               grads=self.module.grads(outputs=-nll_loss_),
@@ -64,5 +65,6 @@ def _loss_channel(channels, grads, labels, is_high=True):
     else:
         for b, l in enumerate(labels):
             loss += (channel_grads[b] * (1 - channels[l])).sum()
+                    
     loss = loss / len(labels)
     return loss

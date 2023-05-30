@@ -8,14 +8,18 @@ cfg = {
 }
 
 
+cag = {
+    'mini-imagenet': 49, 'cifar10': 1, 'cifar100': 1, 'stl10': 7, 'mnist':1, 'fashion-mnist':1
+}
+
 class VGG(nn.Module):
 
-    def __init__(self, features, num_classes=10):
+    def __init__(self, features, data_name, num_classes=10):
         super().__init__()
         self.features = features
 
         self.classifier = nn.Sequential(
-            nn.Linear(512, 4096),
+            nn.Linear(512*cag[data_name], 4096),
             nn.ReLU(inplace=True),
             nn.Dropout(),
             nn.Linear(4096, 4096),
@@ -60,8 +64,8 @@ def vgg13_bn():
     return VGG(make_layers(cfg['B'], batch_norm=True))
 
 
-def vgg16_bn(in_channels=3, num_classes=10):
-    return VGG(make_layers(cfg['D'], batch_norm=True, in_channels=in_channels), num_classes=num_classes)
+def vgg16_bn(data_name, in_channels=3, num_classes=10):
+    return VGG(make_layers(cfg['D'], batch_norm=True, in_channels=in_channels), data_name, num_classes=num_classes)
 
 
 def vgg19_bn():

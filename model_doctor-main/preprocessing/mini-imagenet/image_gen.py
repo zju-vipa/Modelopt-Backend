@@ -1,19 +1,17 @@
 import sys
 
-sys.path.append('/workspace/classification/code/')  # zjl
 import csv
 import os
 from PIL import Image
 
-from configs import config
 
-data_dir = '/workspace/classification/datasets/mini-imagenet/'
+data_dir = 'model_doctor-main/datasets/mini-imagenet/'
 train_csv_path = data_dir + '/train.csv'
 val_csv_path = data_dir + '/val.csv'
 test_csv_path = data_dir + '/test.csv'
-images_path = data_dir + '/images'
+images_path = data_dir + '/images_111'
 
-output_images = config.data_mini_imagenet
+output_images = data_dir + '/images'
 
 train_label = {}
 val_label = {}

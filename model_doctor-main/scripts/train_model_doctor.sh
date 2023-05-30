@@ -8,8 +8,9 @@ export in_channels=3
 export num_classes=10
 export num_epochs=20
 export ori_model_path=${result_path}${exp_name}'/models/model_ori.pth'
-export res_model_path=${result_path}${exp_name}'/models/model_optim.pth'
+export res_model_path=${result_path}${exp_name}'/models/model_optim_'${4}'.pth'
 export data_dir=${3}
+export num_layer=${4}
 export log_dir=${result_path}'/runs/'${exp_name}
 export mask_dir=${result_path}${exp_name}'/masks'
 export grad_dir=${result_path}${exp_name}'/grads_50'
@@ -27,6 +28,7 @@ python ${cwd_path}train_model_doctor.py \
   --data_dir ${data_dir} \
   --log_dir ${log_dir} \
   --mask_dir ${mask_dir} \
+  --num_layer ${num_layer} \
   --grad_dir ${grad_dir} \
   --alpha ${alpha} \
   --beta ${beta} \

@@ -11,8 +11,8 @@ from PIL import Image
 
 # source directory
 
-data_cifar100 = "model_doctor-main/datasets/cifar100"
-CIFAR100_DIR = "model_doctor-main/datasets/cifar100/processed"
+data_cifar100 = "model_doctor-main/datasets/cifar100/raw"
+CIFAR100_DIR = "model_doctor-main/datasets/cifar100/"
 
 # extract cifar img in here.
 CIFAR100_TRAIN_DIR = CIFAR100_DIR + '/train'
@@ -69,7 +69,7 @@ def gen_cifar_100():
         ig = Image.fromarray(g)
         ib = Image.fromarray(b)
         rgb = Image.merge("RGB", (ir, ig, ib))
-        img_path = CIFAR100_TEST_DIR + '/' + str(train_data[b'fine_labels'][i])
+        img_path = CIFAR100_TEST_DIR + '/' + str(val_data[b'fine_labels'][i])
         if not os.path.exists(img_path):
             os.makedirs(img_path)
         filename = img_path + '/' + str(i) + '.png'

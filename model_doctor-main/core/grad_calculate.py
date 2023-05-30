@@ -14,6 +14,7 @@ import argparse
 import torch
 import numpy as np
 import os
+import json
 from tqdm import tqdm
 
 import models
@@ -102,11 +103,15 @@ def main():
     parser.add_argument('--device_index', default='0', type=str, help='device index')
     args = parser.parse_args()
 
+    cfg = json.load(open('model_doctor-main/configs/config_trainer.json'))[args.data_name]
+    
+    args.in_channels=cfg['model']['in_channels']
+    args.num_classes=cfg['model']['num_classes']
     # ----------------------------------------
     # basic configuration
     # ----------------------------------------
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.device_index
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    os.environ["CUDA_VISIBLE_DEVICES"] =  '2'
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
     if not os.path.exists(args.grad_path):
         os.makedirs(args.grad_path)
@@ -120,7 +125,8 @@ def main():
     # ----------------------------------------
     # model/data configuration
     # ----------------------------------------
-    model = models.load_model(model_name=args.model_name, num_classes=args.num_classes)
+    # model = models.load_model(model_name=args.model_name, num_classes=args.num_classes)
+    model = models.load_model(model_name=args.model_name, data_name=args.data_name, in_channels=args.in_channels, num_classes=args.num_classes)
     model.load_state_dict(torch.load(args.model_path))
     model.to(device)
     model.eval()

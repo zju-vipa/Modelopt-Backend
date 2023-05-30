@@ -5,18 +5,18 @@ from models import simnet, alexnet, vgg, resnet, \
     inceptionv3, wideresnet, shufflenetv2, squeezenet, mnasnet
 
 
-def load_model(model_name, in_channels=3, num_classes=10):
+def load_model(model_name, data_name, in_channels=3, num_classes=10):
     print('-' * 50)
     print('LOAD MODEL:', model_name)
     print('-' * 50)
 
     model = None
     if model_name == 'simnet':
-        model = simnet.simnet()
+        model = simnet.simnet(data_name, in_channels, num_classes)
     elif model_name == 'alexnet':
-        model = alexnet.alexnet(in_channels, num_classes)
+        model = alexnet.alexnet(data_name, in_channels, num_classes)
     elif model_name == 'vgg16':
-        model = vgg.vgg16_bn(in_channels, num_classes)
+        model = vgg.vgg16_bn(data_name, in_channels, num_classes)
     elif model_name == 'resnet34':
         model = resnet.resnet34(in_channels, num_classes)
     elif model_name == 'resnet50':

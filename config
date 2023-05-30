@@ -6,13 +6,18 @@ port = 3306
 db = doctor
 
 [save_url]
-model = ./model_doctor-main/models/
+
+scripts = ./model_doctor-main/scripts/
+
+model = ./static/models/
 data = ./model_doctor-main/datasets/
+output = ./model_doctor-main/output/
+weight = ./model_doctor-main/output/all_weight
 pics = ./storage/pics/
 mark = ./storage/mark/
-weight = ./storage/weight/
 result = ./static/result
 
 [specify_file_name]
 pics = unmarked.png
 weight = weight.npy
+

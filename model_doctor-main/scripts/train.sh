@@ -10,7 +10,7 @@ export num_epochs=20
 export model_dir=${result_path}${exp_name}'/models'
 export data_dir=${3}
 export log_dir=${result_path}'/runs/'${exp_name}
-export device_index='1'
+export device_index='2'
 python ${cwd_path}train.py \
   --model_name ${model_name} \
   --data_name ${data_name} \

@@ -1,10 +1,16 @@
 import torch.nn as nn
 
 
+cag = {
+    'mini-imagenet': 49, 'cifar10': 1, 'cifar100': 1, 'stl10': 7, 'mnist':1, 'fashion-mnist':1
+}
+
+
 # no LRN
 class AlexNet(nn.Module):
-    def __init__(self, in_channels=3, num_classes=10):
+    def __init__(self, data_name, in_channels=3, num_classes=10):
         super(AlexNet, self).__init__()
+        self.data_name = data_name
         self.features = nn.Sequential(
             nn.Conv2d(in_channels, 64, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1)),
             nn.ReLU(inplace=True),
@@ -22,7 +28,7 @@ class AlexNet(nn.Module):
         )
         self.classifier = nn.Sequential(
             nn.Dropout(),
-            nn.Linear(256 * 2 * 2, 4096),
+            nn.Linear(256 * 2 * cag[self.data_name] * 2 * cag[self.data_name], 4096),
             nn.ReLU(inplace=True),
             nn.Dropout(),
             nn.Linear(4096, 4096),
@@ -32,10 +38,11 @@ class AlexNet(nn.Module):
 
     def forward(self, x):
         x = self.features(x)
-        x = x.view(x.size(0), 256 * 2 * 2)
+        x = x.view(x.size(0), 256 * 2 * cag[self.data_name] * 2 * cag[self.data_name] )
+        # x = x.view(x.size()[0], -1)
         x = self.classifier(x)
         return x
 
 
-def alexnet(in_channels=3, num_classes=10):
-    return AlexNet(in_channels=in_channels, num_classes=num_classes)
+def alexnet(data_name, in_channels=3, num_classes=10):
+    return AlexNet(data_name, in_channels=in_channels, num_classes=num_classes)

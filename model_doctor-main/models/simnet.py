@@ -2,9 +2,13 @@ import torch
 from torch import nn
 from collections import OrderedDict
 
+cag = {
+    'mini-imagenet': 49, 'cifar10': 5184, 'cifar100': 1, 'stl10': 7, 'mnist':1, 'fashion-mnist':1
+}
+
 
 class SimNet(nn.Module):
-    def __init__(self):
+    def __init__(self, data_name, in_channels, num_classes):
         super(SimNet, self).__init__()
         self.features = nn.Sequential(
             OrderedDict([
@@ -20,7 +24,7 @@ class SimNet(nn.Module):
         )
         self.classifier = nn.Sequential(
             OrderedDict([
-                ('f4', nn.Linear(254016, 12))
+                ('f4', nn.Linear(cag['cifar10'], num_classes))
             ])
         )
 
@@ -31,13 +35,13 @@ class SimNet(nn.Module):
         return x
 
 
-def simnet():
-    return SimNet()
+def simnet(data_name, in_channels, num_classes):
+    return SimNet(data_name, in_channels, num_classes)
 
 
-if __name__ == '__main__':
-    from torchsummary import summary
+# if __name__ == '__main__':
+#     from torchsummary import summary
 
-    model = simnet()
-    summary(model, (3, 224, 224))
-    print(model)
+#     model = simnet()
+#     summary(model, (3, 224, 224))
+#     print(model)

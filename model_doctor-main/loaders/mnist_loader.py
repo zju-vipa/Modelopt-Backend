@@ -8,6 +8,7 @@ def _get_train_set(data_path):
                         transform=transforms.Compose([
                             transforms.Resize((32, 32)),
                             transforms.RandomCrop(32, padding=2),
+                            transforms.Grayscale(1),
                             transforms.ToTensor(),
                             transforms.Normalize((0.1307,), (0.3081,))
                         ]))
@@ -17,6 +18,7 @@ def _get_test_set(data_path):
     return ImageDataset(image_dir=data_path,
                         transform=transforms.Compose([
                             transforms.Resize((32, 32)),
+                            transforms.Grayscale(1),
                             transforms.ToTensor(),
                             transforms.Normalize((0.1307,), (0.3081,))
                         ]))
